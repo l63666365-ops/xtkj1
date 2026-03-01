@@ -1,0 +1,20 @@
+{
+  "name": "Jadwal Sekolah Pro",
+  "short_name": "Jadwal",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#ffcc00",
+  "icons": [
+    {
+      "src": "Quality_restoration_20260302064027011.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "Quality_restoration_20260302064027011.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
