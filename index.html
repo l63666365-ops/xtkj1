@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Sekolah Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: #121212; background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat; color: white; min-height: 100vh; display: flex; justify-content: center; padding: 20px; transition: background 0.5s ease; }
+        .container { width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; }
+        .glass-card { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 20px; text-align: center; position: relative; overflow: hidden; }
+        .header-strip { border-top: 5px solid #ffcc00; box-shadow: 0 2px 10px rgba(255, 204, 0, 0.3); position: relative; }
+        
+        #clock { font-size: 3rem; font-weight: bold; letter-spacing: 2px; color: black; cursor: pointer; transition: transform 0.2s; position: relative; z-index: 5; }
+        #clock:active { transform: scale(0.95); }
+        #full-date { font-size: 0.9rem; opacity: 0.9; margin-bottom: 10px; }
+        
+        #quote-popup { 
+            position: absolute; top: 75px; left: 50%; transform: translate(-50%, -10px) scale(0.9);
+            background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            color: #ffffff; padding: 18px; border-radius: 18px; font-size: 0.9rem; text-align: center; 
+            width: 90%; max-width: 320px; pointer-events: none; opacity: 0; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; 
+            border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        }
+        #quote-popup.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+        .status-container { font-size: 0.85rem; background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 12px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .status-now { color: #ffcc00; font-weight: bold; margin-bottom: 3px; }
+        .status-next { opacity: 0.8; font-size: 0.75rem; }
+
+        .nav-day { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .btn-nav { background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 10px 15px; border-radius: 12px; cursor: pointer; font-weight: bold; }
+        .current-day-box { flex-grow: 1; padding: 10px; font-weight: 600; }
+        .week-toggle { display: flex; gap: 10px; justify-content: center; }
+        .btn-week { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        .btn-week.active { background: #ffcc00; color: black; border: none; }
+        .schedule-grid { display: grid; grid-template-columns: 1.5fr 1.2fr 0.7fr; gap: 8px; }
+        .grid-header { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; padding: 8px; background: rgba(255, 255, 255, 0.2); border-radius: 10px; text-align: center; }
+        .grid-column { display: flex; flex-direction: column; gap: 8px; }
+        .item-box { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); padding: 12px 5px; border-radius: 10px; font-size: 0.75rem; min-height: 55px; display: flex; align-items: center; justify-content: center; text-align: center; border-left: 4px solid #ffcc00; transition: all 0.3s ease; flex-direction: column; gap: 2px; position: relative; }
+        
+        .highlight { 
+            background: rgba(255, 204, 0, 0.3) !important; border-left: 8px solid #ffcc00 !important; 
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.5); transform: scale(1.05); z-index: 2;
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 10px rgba(255, 204, 0, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(255, 204, 0, 0.8); }
+            100% { box-shadow: 0 0 10px rgba(255, 204, 0, 0.4); }
+        }
+
+        .input-edit { width: 100%; background: #333; color: white; border: 1px solid #ffcc00; font-size: 0.75rem; text-align: center; border-radius: 5px; padding: 2px; }
+        input[type="time"].input-edit { font-size: 0.7rem; color-scheme: dark; }
+        
+        .task-input-container { display: flex; gap: 10px; margin-top: 5px; }
+        input[type="text"] { flex-grow: 1; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); padding: 12px; border-radius: 12px; color: white; outline: none; }
+        .btn-add { background: #ffcc00; color: black; border: none; width: 45px; border-radius: 12px; font-weight: bold; font-size: 1.5rem; cursor: pointer; }
+        .task-list { list-style: none; margin-top: 10px; }
+        .task-item { background: rgba(255, 255, 255, 0.15); padding: 10px 15px; border-radius: 12px; display: flex; align-items: center; margin-bottom: 8px; border-left: 3px solid #ffcc00; gap: 10px; }
+        .task-item.done { opacity: 0.5; border-left-color: gray; }
+        .task-item.done span { text-decoration: line-through; }
+        
+        .task-check { width: 18px; height: 18px; cursor: pointer; accent-color: #ffcc00; }
+        .task-text { flex-grow: 1; font-size: 0.85rem; cursor: pointer; text-align: left; }
+
+        .bg-control { text-align: center; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-save { background: #28a745 !important; color: white !important; }
+    
+        .pomo-icon {
+            position: fixed; top: 20px; right: 20px; background: #ffcc00; color: black;
+            width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 1.5rem; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4); z-index: 999; transition: transform 0.2s;
+        }
+        .pomo-icon:active { transform: scale(0.9); }
+
+        .pomo-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; color: white;
+        }
+
+        .pomo-box { text-align: center; position: relative; padding: 30px; width: 90%; max-width: 350px; }
+        .close-pomo { position: absolute; top: -20px; right: 0; font-size: 2.5rem; cursor: pointer; color: rgba(255, 255, 255, 0.6); }
+        .pomo-time-big { font-size: 5rem; font-weight: bold; color: #ffcc00; margin: 20px 0; text-shadow: 0 0 20px rgba(255, 204, 0, 0.3); }
+        .pomo-status { letter-spacing: 2px; font-size: 0.9rem; opacity: 0.8; }
+        .pomo-btn-main { background: #ffcc00; color: black; border: none; padding: 15px 40px; border-radius: 15px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; }
+        .pomo-btn-main.running { background: #ff4444; color: white; }
+
+        .custom-alert {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.2); padding: 30px; border-radius: 25px;
+            width: 85%; max-width: 320px; z-index: 2000; text-align: center; display: none;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .custom-alert.show { display: block; transform: translate(-50%, -50%) scale(1); }
+        .alert-title { color: #ffcc00; font-weight: bold; margin-bottom: 15px; font-size: 1.1rem; }
+        .alert-msg { font-size: 0.95rem; line-height: 1.5; margin-bottom: 25px; opacity: 0.9; }
+        .alert-btn { background: #ffcc00; color: black; border: none; padding: 12px 30px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div id="customAlert" class="custom-alert">
+    <div class="alert-title" id="alertTitle">Pemberitahuan</div>
+    <div class="alert-msg" id="alertMsg">Pesan</div>
+    <button class="alert-btn" onclick="closeAlert()">MENGERTI</button>
+</div>
+
+<div class="pomo-icon" onclick="openPomo()">⏳</div>
+
+<div id="pomoOverlay" class="pomo-overlay">
+    <div class="pomo-box">
+        <div class="close-pomo" onclick="closePomo()">×</div>
+        <div id="pomoLabel" class="pomo-status">SIAP FOKUS?</div>
+        <div id="pomoDisplay" class="pomo-time-big">25:00</div>
+        <button id="pomoBtn" class="pomo-btn-main" onclick="toggleTimer()">MULAI</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="glass-card header-strip">
+        <div id="clock" onclick="showMotivation()">00.00.00</div>
+        <div id="quote-popup"></div>
+        <div id="full-date">Memuat...</div>
+        <div class="status-container" id="status-live">
+            <div class="status-now" id="stat-now">Mencari pelajaran...</div>
+            <div class="status-next" id="stat-next"></div>
+        </div>
+    </div>
+
+    <div class="nav-day">
+        <button class="btn-nav" onclick="changeDay(-1)"> << </button>
+        <div class="glass-card current-day-box" id="display-day">Hari Ini</div>
+        <button class="btn-nav" onclick="changeDay(1)"> >> </button>
+    </div>
+
+    <div class="week-toggle">
+        <button id="btn-m1" class="btn-week active" onclick="setWeek('m1')">Minggu 1</button>
+        <button id="btn-m2" class="btn-week" onclick="setWeek('m2')">Minggu 2</button>
+    </div>
+
+    <div class="schedule-grid" id="main-grid">
+        <div class="grid-header">Mapel</div>
+        <div class="grid-header">Jam</div>
+        <div class="grid-header">Ruang</div>
+        <div class="grid-column" id="col-mapel"></div>
+        <div class="grid-column" id="col-jam"></div>
+        <div class="grid-column" id="col-ruang"></div>
+    </div>
+    <div id="edit-controls" style="display:none; text-align:center; margin-top:10px;">
+        <button onclick="addRow()" style="background:#ffcc00; color:black; border:none; padding:8px 20px; border-radius:10px; font-weight:bold; cursor:pointer;">+ TAMBAH MAPEL</button>
+    </div>
+
+   
+
+    <div class="bg-control">
+        <button id="btn-edit-mode" class="btn-nav" style="font-size: 0.7rem;" onclick="toggleEditMode()">📌 EDIT JADWAL</button>
+        <button id="btn-save-jadwal" class="btn-nav btn-save" style="display:none;" onclick="saveJadwal()">SIMPAN PERUBAHAN</button>
+        <input type="file" id="bgInput" accept="image/*" style="display: none;" onchange="changeBg(this)">
+        <button class="btn-nav" style="font-size: 0.7rem;" onclick="document.getElementById('bgInput').click()">📌 GANTI BACKGROUND</button>
+    </div>
+</div>
+
+<script>
+    function showAlert(title, msg) {
+        document.getElementById('alertTitle').innerText = title;
+        document.getElementById('alertMsg').innerText = msg;
+        document.getElementById('customAlert').classList.add('show');
+    }
+    function closeAlert() { document.getElementById('customAlert').classList.remove('show'); }
+
+    let pMin = 25; let pSec = 0; let pInterval; let pIsRunning = false; let pIsWork = true;
+    function openPomo() { document.getElementById('pomoOverlay').style.display = 'flex'; }
+    function closePomo() { document.getElementById('pomoOverlay').style.display = 'none'; }
+
+    function toggleTimer() {
+        const btn = document.getElementById('pomoBtn');
+        if (!pIsRunning) {
+            pIsRunning = true; btn.innerText = "BERHENTI"; btn.classList.add('running');
+            pInterval = setInterval(runTimer, 1000);
+        } else {
+            clearInterval(pInterval); pIsRunning = false;
+            btn.innerText = pIsWork ? "MULAI" : "LANJUT ISTIRAHAT"; btn.classList.remove('running');
+        }
+    }
+
+    function runTimer() {
+        if (pSec === 0) {
+            if (pMin === 0) {
+                clearInterval(pInterval);
+                pIsWork = !pIsWork;
+                if (!pIsWork) {
+                    pMin = 5;
+                    showAlert("ISTIRAHAT", "Waktunya istirahat,\nJangan lupa minum air putih ya");
+                    document.getElementById('pomoLabel').innerText = "ISTIRAHAT";
+                } else {
+                    pMin = 25;
+                    showAlert("FOKUS LAGI!", "Ayo semangat lagi belajarnya!");
+                    document.getElementById('pomoLabel').innerText = "SESI FOKUS";
+                }
+                pSec = 0; pIsRunning = false;
+                document.getElementById('pomoBtn').innerText = "MULAI";
+                document.getElementById('pomoBtn').classList.remove('running');
+            } else { pMin--; pSec = 59; }
+        } else { pSec--; }
+        updatePomoView();
+    }
+    function updatePomoView() {
+        const m = pMin < 10 ? '0' + pMin : pMin;
+        const s = pSec < 10 ? '0' + pSec : pSec;
+        document.getElementById('pomoDisplay').innerText = m + ":" + s;
+    }
+
+    const quotes = ["Hasil yang besar butuh ketenangan yang panjang", "Tetaplah rendah hati sampai kamu tidak perlu lagi memperkenalkan diri", "Jangan sibuk memberi tahu orang lain, tunjukkan saja hasilnya", "Disiplin adalah bentuk paling tinggi dari mencintai diri sendiri", "Jangan biarkan emosi mengacaukan rencana yang sudah kamu buat", "Pemenang tidak bicara soal rencana, mereka bicara soal eksekusi", "Fokus pada apa yang bisa kamu kendalikan, sisanya biarkan waktu yang jawab", "Kualitas kerja kamu adalah cerminan dari rasa hormatmu pada diri sendiri", "Lebih baik berjalan pelan daripada berhenti karena terlalu banyak bicara", "Standar kamu adalah apa yang kamu terima, bukan apa yang kamu harapkan", "Orang yang paling kuat adalah yang bisa menguasai dirinya sendiri", "Buatlah dirimu sulit untuk digantikan karena kualitasmu, bukan karena posisimu", "Diam itu emas, tapi hasil yang bicara itu berlian", "Kerjakan dalam sunyi, biarkan kesuksesanmu yang membuat kegaduhan", "Ubah rasa lelah menjadi hasil yang nyata", "Jangan biarkan gangguan kecil merusak rencana besar", "Konsistensi adalah kunci yang membedakan amatir dan profesional", "Hargai waktumu karena itu adalah aset yang tidak bisa dibeli", "Jadilah versi terbaik dari dirimu sendiri setiap hari", "Kesuksesan dimulai dari keputusan untuk mencoba", "Fokus pada kemajuan, bukan kesempurnaan", "Tantangan adalah cara semesta menguji kesiapanmu", "Jangan membandingkan bab pertamamu dengan bab kesepuluh orang lain", "Satu langkah kecil lebih baik daripada seribu rencana tanpa aksi", "Kekuatan karakter terlihat saat situasi sedang tidak berpihak padamu", "Masa depanmu ditentukan oleh apa yang kamu lakukan hari ini", "Jadilah pribadi yang sulit dicari dan sulit dilupakan karena kualitasmu", "Keberuntungan adalah pertemuan antara persiapan dan kesempatan"];
+    let timerQuote;
+    function showMotivation() {
+        const popup = document.getElementById('quote-popup');
+        popup.innerText = `"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
+        popup.classList.add('show');
+        clearTimeout(timerQuote);
+        timerQuote = setTimeout(() => { popup.classList.remove('show'); }, 4000);
+    }
+
+    const defaultJadwal = {
+        m1: {
+            "Senin": [["PD", "07:45-13:15", "(MM)"], ["TIK", "13:15-15:30","(MM)"]],
+            "Selasa": [["Kim", "07:00-08:30","(1)"], ["Agm", "08:30-1O:15", "(1)"], ["OR", "10:15-11:45", "(1)"], ["JD","12:30-15:30","(MM)"]],
+            "Rabu": [["PD", "07:00-11:45", "(MM)"], ["Fis", "12:30-14:00", "(1)"], ["Ind", "14:00-15:30", "(1)"]],
+            "Kamis": [["Taruna", "07:00-15:30", "(-)"]],
+            "Jumat": [["SBD", "07:00-09:15", "(1)"], ["Kim", "09:30-11:00", "(1)"], ["Ind", "11:00-14:00", "(1)"]]
+        },
+        m2: {
+            "Senin": [["JD", "07:45-11:00", "(MM)"], ["JW", "11:00-13:15", "(1)"], ["Mat", "13:15-14:45", "(1)"], ["Fis", "14:45-15:30", "(1)"]],
+            "Selasa": [["OR", "07:00-08:30", "(1)"], ["Ing", "08:30-10:15", "(1)"],["Sej", "10:15-13:15","(1)"], ["PKn", "13:15-15:30", "(1)"]],
+            "Rabu": [["JD", "07:00-10:15", "(MM)"], ["Agm", "10:15-11:45", "(1)"], ["Mat", "12:30-14:00", "(1)"], ["Ing", "14:00-15:30", "(1)"]],
+            "Kamis": [["Taruna", "07:00-15:30", "(-)"]],
+            "Jumat": [["Mat", "07:00-08:30", "(1)"], ["Ing", "08:30-10:15", "(1)"], ["Fis", "10:15-11:00", "(1)"], ["TIK", "11:00-14:00", "(MM)"]]
+        }
+    };
+
+    let jadwalData = JSON.parse(localStorage.getItem('savedJadwal')) || defaultJadwal;
+    let backupJadwal = null;
+    let currentViewDate = new Date(); let lastDateStr = currentViewDate.toDateString(); 
+    let currentWeekType = "m1"; let isEditMode = false;
+
+    function getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+    function setAutoWeek() {
+        currentWeekType = (getWeekNumber(new Date()) % 2 === 0) ? "m2" : "m1";
+        document.getElementById('btn-m1').classList.toggle('active', currentWeekType === 'm1');
+        document.getElementById('btn-m2').classList.toggle('active', currentWeekType === 'm2');
+    }
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false }).replace(/:/g, '.');
+        document.getElementById('full-date').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        if (now.toDateString() !== lastDateStr) { lastDateStr = now.toDateString(); currentViewDate = new Date(); setAutoWeek(); renderSchedule(); }
+        updateStatus(); if(!isEditMode) checkHighlight();
+    }
+    setInterval(updateTime, 1000);
+
+    function updateStatus() {
+        const now = new Date(); const currentTime = now.getHours() * 60 + now.getMinutes();
+        const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const todayName = days[now.getDay()];
+        const statNow = document.getElementById('stat-now'); const statNext = document.getElementById('stat-next');
+
+        if(todayName === "Sabtu" || todayName === "Minggu") {
+            statNow.innerText = "Libur Akhir Pekan ✨"; statNext.innerText = ""; return;
+        }
+
+        const currentWeekJadwal = (getWeekNumber(now) % 2 === 0) ? "m2" : "m1";
+        const listMapel = jadwalData[currentWeekJadwal][todayName] || [];
+        let ongoing = null; let next = null;
+
+        for (let i = 0; i < listMapel.length; i++) {
+            const timeRange = listMapel[i][1].split('-');
+            const start = timeRange[0].split(':').map(Number);
+            const end = timeRange[1].split(':').map(Number);
+            const startTime = start[0] * 60 + start[1];
+            const endTime = end[0] * 60 + end[1];
+
+            if (currentTime >= startTime && currentTime <= endTime) {
+                ongoing = { name: listMapel[i][0], end: endTime };
+                next = listMapel[i+1] ? { name: listMapel[i+1][0], start: listMapel[i+1][1].split('-')[0].split(':').map(Number) } : null;
+                break;
+            } else if (currentTime < startTime) {
+                next = { name: listMapel[i][0], start: start }; break;
+            }
+        }
+
+        if (ongoing) {
+            statNow.innerText = `Sekarang: ${ongoing.name} (berakhir ${ongoing.end - currentTime} menit lagi)`;
+            statNext.innerText = next ? `Selanjutnya: ${next.name}` : "Selanjutnya: Jam Pulang 🏠";
+        } else if (next) {
+            statNow.innerText = `Istirahat`;
+            statNext.innerText = `Selanjutnya: ${next.name} (mulai ${next.start[0] * 60 + next.start[1] - currentTime} menit lagi)`;
+        } else {
+            statNow.innerText = "Semua mapel hari ini selesai ✅"; statNext.innerText = "Waktunya istirahat";
+        }
+    }
+
+    function changeDay(offset) { currentViewDate.setDate(currentViewDate.getDate() + offset); renderSchedule(); }
+    function setWeek(week) { currentWeekType = week; document.getElementById('btn-m1').classList.toggle('active', week === 'm1'); document.getElementById('btn-m2').classList.toggle('active', week === 'm2'); renderSchedule(); }
+    
+    function toggleEditMode() { 
+        if (!isEditMode) {
+            backupJadwal = JSON.parse(JSON.stringify(jadwalData));
+            isEditMode = true;
+        } else {
+            jadwalData = JSON.parse(JSON.stringify(backupJadwal));
+            isEditMode = false;
+        }
+        
+        document.getElementById('btn-save-jadwal').style.display = isEditMode ? 'inline-block' : 'none'; 
+        document.getElementById('edit-controls').style.display = isEditMode ? 'block' : 'none';
+        document.getElementById('btn-edit-mode').innerText = isEditMode ? 'BATAL' : '📌 EDIT JADWAL'; 
+        renderSchedule(); 
+    }
+    
+    function renderSchedule() {
+        const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const dayName = days[currentViewDate.getDay()];
+        document.getElementById('display-day').innerText = currentViewDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+        const colMapel = document.getElementById('col-mapel'); const colJam = document.getElementById('col-jam'); const colRuang = document.getElementById('col-ruang');
+        colMapel.innerHTML = ""; colJam.innerHTML = ""; colRuang.innerHTML = "";
+        if(dayName === "Sabtu" || dayName === "Minggu") {
+            colMapel.innerHTML = "<div class='item-box'>Libur</div>"; colJam.innerHTML = "<div class='item-box'>-</div>"; colRuang.innerHTML = "<div class='item-box'>-</div>"; return;
+        }
+        const hariIni = jadwalData[currentWeekType][dayName] || [];
+        hariIni.forEach((item, index) => {
+            if (isEditMode) {
+                const tp = item[1].split('-');
+                colMapel.innerHTML += `<div class="item-box"><button onclick="deleteRow(${index})" style="position:absolute; top:2px; left:2px; background:red; color:white; border:none; border-radius:50%; width:15px; height:15px; font-size:10px; cursor:pointer;">×</button><input class="input-edit" id="edit-mapel-${index}" value="${item[0]}"></div>`;
+                colJam.innerHTML += `<div class="item-box"><input type="time" class="input-edit" id="edit-jam-start-${index}" value="${tp[0]}"> s/d <input type="time" class="input-edit" id="edit-jam-end-${index}" value="${tp[1]}"></div>`;
+                colRuang.innerHTML += `<div class="item-box"><input class="input-edit" id="edit-ruang-${index}" value="${item[2]}"></div>`;
+            } else {
+                colMapel.innerHTML += `<div class="item-box" id="mapel-${index}">${item[0]}</div>`;
+                colJam.innerHTML += `<div class="item-box" id="jam-${index}">${item[1]}</div>`;
+                colRuang.innerHTML += `<div class="item-box" id="ruang-${index}">${item[2]}</div>`;
+            }
+        });
+        if(!isEditMode) checkHighlight();
+    }
+
+    // FUNGSI AMANKAN EDITAN SEMENTARA
+    function saveTemporarily() {
+        const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const dayName = days[currentViewDate.getDay()];
+        const tempJadwal = [];
+        const mapelInputs = document.querySelectorAll('#col-mapel .input-edit');
+        
+        mapelInputs.forEach((_, index) => {
+            const m = document.getElementById(`edit-mapel-${index}`).value;
+            const js = document.getElementById(`edit-jam-start-${index}`).value;
+            const je = document.getElementById(`edit-jam-end-${index}`).value;
+            const r = document.getElementById(`edit-ruang-${index}`).value;
+            tempJadwal.push([m, `${js}-${je}`, r]);
+        });
+        jadwalData[currentWeekType][dayName] = tempJadwal;
+    }
+
+    function addRow() {
+        const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const dayName = days[currentViewDate.getDay()];
+        saveTemporarily();
+        if(!jadwalData[currentWeekType][dayName]) jadwalData[currentWeekType][dayName] = [];
+        jadwalData[currentWeekType][dayName].push(["Mapel Baru", "07:00-08:00", "(-)"]);
+        renderSchedule();
+    }
+
+    function deleteRow(index) {
+        saveTemporarily();
+        const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const dayName = days[currentViewDate.getDay()];
+        jadwalData[currentWeekType][dayName].splice(index, 1);
+        renderSchedule();
+    }
+
+    function saveJadwal() {
+        saveTemporarily();
+        localStorage.setItem('savedJadwal', JSON.stringify(jadwalData)); 
+        backupJadwal = JSON.parse(JSON.stringify(jadwalData));
+        isEditMode = false;
+        
+        document.getElementById('btn-save-jadwal').style.display = 'none'; 
+        document.getElementById('edit-controls').style.display = 'none';
+        document.getElementById('btn-edit-mode').innerText = '📌 EDIT JADWAL'; 
+        
+        showAlert("Tersimpan", "Jadwal berhasil diperbarui!"); 
+        renderSchedule();
+    }
+
+    function checkHighlight() {
+        const now = new Date(); const ct = now.getHours() * 60 + now.getMinutes();
+        if (currentViewDate.toDateString() !== now.toDateString()) return;
+        const schedule = jadwalData[currentWeekType][["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][now.getDay()]] || [];
+        schedule.forEach((item, index) => {
+            const tr = item[1].split('-'); const s = tr[0].split(':').map(Number); const e = tr[1].split(':').map(Number);
+            if (ct >= (s[0]*60+s[1]) && ct <= (e[0]*60+e[1])) {
+                document.getElementById(`mapel-${index}`)?.classList.add('highlight');
+                document.getElementById(`jam-${index}`)?.classList.add('highlight');
+                document.getElementById(`ruang-${index}`)?.classList.add('highlight');
+            }
+        });
+    }
+
+    function loadTasks() {
+        const tasks = JSON.parse(localStorage.getItem('mySchoolTasks')) || [];
+        const list = document.getElementById('taskList'); list.innerHTML = "";
+        tasks.forEach((t, i) => {
+            const li = document.createElement('li'); li.className = `task-item ${t.done ? 'done' : ''}`;
+            li.innerHTML = `<input type="checkbox" class="task-check" ${t.done ? 'checked' : ''} onclick="toggleTask(${i})"> <span class="task-text" onclick="toggleTask(${i})">${t.text}</span> <button style="background:none; border:none; color:red; cursor:pointer;" onclick="deleteTask(${i})">×</button>`;
+            list.appendChild(li);
+        });
+    }
+    function addTask() {
+        const input = document.getElementById('taskInput'); if (input.value.trim() === "") return;
+        const tasks = JSON.parse(localStorage.getItem('mySchoolTasks')) || [];
+        tasks.push({ text: input.value, done: false }); localStorage.setItem('mySchoolTasks', JSON.stringify(tasks));
+        input.value = ""; loadTasks();
+    }
+    function toggleTask(i) { const tasks = JSON.parse(localStorage.getItem('mySchoolTasks')); tasks[i].done = !tasks[i].done; localStorage.setItem('mySchoolTasks', JSON.stringify(tasks)); loadTasks(); }
+    function deleteTask(i) { const tasks = JSON.parse(localStorage.getItem('mySchoolTasks')); tasks.splice(i, 1); localStorage.setItem('mySchoolTasks', JSON.stringify(tasks)); loadTasks(); }
+    
+    function changeBg(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => { document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('${e.target.result}')`; localStorage.setItem('savedBg', e.target.result); };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    window.onload = function() {
+        const savedBg = localStorage.getItem('savedBg');
+        if (savedBg) document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('${savedBg}')`;
+        updateTime(); setAutoWeek(); renderSchedule(); loadTasks();
+    };
+</script>
+</body>
+</html>
